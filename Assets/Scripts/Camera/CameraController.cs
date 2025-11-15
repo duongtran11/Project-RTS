@@ -4,12 +4,15 @@ using UnityEngine;
 public class CameraController : MonoBehaviour
 {
     private GameInput _input;
+    private Camera _mainCamera;
     [SerializeField] private CinemachineOrbitalFollow _cameraOrbitFollow;
 
     [Header("Camera Settings")]
     [SerializeField] private float PanSpeed;
     [SerializeField] private float RotateSpeed;
     [SerializeField] private float ZoomSpeed;
+    [SerializeField] private bool _invertHorizontal;
+    [SerializeField] private bool _invertVertical;
     [SerializeField] private float _edgePadding;
     private Vector2 _panInput;
     private float _mouseLeftInput;
@@ -17,7 +20,8 @@ public class CameraController : MonoBehaviour
     private float _mouseMiddleInput;
     private Vector2 _mouseDeltaInput;
     private Vector2 _mousePositionInput;
-    
+    private bool _hasFocus;
+
     void Awake()
     {
         _input = new GameInput();
@@ -34,9 +38,14 @@ public class CameraController : MonoBehaviour
         _input.Camera.MousePosition.performed += ctx => _mousePositionInput = ctx.ReadValue<Vector2>();
         _input.Camera.MousePosition.canceled += ctx => _mousePositionInput = Vector2.zero;
         _input.Enable();
+        _mainCamera = Camera.main;
     }
     void Update()
     {
+        if (!_hasFocus)
+        {
+            return;
+        }
         HandleCameraPan();
         HandleCameraRotate();
         HandleCameraZoom();
@@ -48,17 +57,29 @@ public class CameraController : MonoBehaviour
         // Edge pan
         var centerPoint = new Vector2(Screen.width, Screen.height) / 2f;
         if (_mousePositionInput.x <= _edgePadding
-            || _mousePositionInput.x >= Screen.width - _edgePadding
-            || _mousePositionInput.y <= _edgePadding
+            || _mousePositionInput.x >= Screen.width - _edgePadding)
+        {
+            var direction = _mousePositionInput.x > Screen.width / 2f ? 1f : -1f;
+            transform.position += Quaternion.Euler(0f, _mainCamera.transform.eulerAngles.y, 0f) * transform.right * direction * PanSpeed * Time.deltaTime;
+        }
+
+        if (_mousePositionInput.y <= _edgePadding
             || _mousePositionInput.y >= Screen.height - _edgePadding)
         {
-            var panDirection = new Vector2(_mousePositionInput.x - centerPoint.x, _mousePositionInput.y - centerPoint.y).normalized;
-            transform.position += PanSpeed * Time.deltaTime * new Vector3(panDirection.x, 0f, panDirection.y);
+            var direction = _mousePositionInput.y > Screen.height / 2f ? 1f : -1f;
+            transform.position += Quaternion.Euler(0f, _mainCamera.transform.eulerAngles.y, 0f) * transform.forward * direction * PanSpeed * Time.deltaTime;
         }
     }
     void HandleCameraRotate()
     {
+        if (_mouseRightInput != 0f)
+        {
+            _cameraOrbitFollow.HorizontalAxis.Value += (_invertHorizontal ? -1f : 1f) * _mouseDeltaInput.x * RotateSpeed * Time.deltaTime;
+            _cameraOrbitFollow.VerticalAxis.Value += (_invertVertical ? -1f : 1f) * _mouseDeltaInput.y * RotateSpeed * Time.deltaTime;
 
+            _cameraOrbitFollow.HorizontalAxis.Value = Mathf.Clamp(_cameraOrbitFollow.HorizontalAxis.Value, _cameraOrbitFollow.HorizontalAxis.Range.x, _cameraOrbitFollow.HorizontalAxis.Range.y);
+            _cameraOrbitFollow.VerticalAxis.Value = Mathf.Clamp(_cameraOrbitFollow.VerticalAxis.Value, _cameraOrbitFollow.VerticalAxis.Range.x, _cameraOrbitFollow.VerticalAxis.Range.y);
+        }
     }
     void HandleCameraZoom()
     {
@@ -66,6 +87,7 @@ public class CameraController : MonoBehaviour
     }
     void OnApplicationFocus(bool hasFocus)
     {
+        _hasFocus = hasFocus;
         if (hasFocus)
             Cursor.lockState = CursorLockMode.Confined;
     }
