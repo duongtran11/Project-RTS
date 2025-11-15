@@ -13,6 +13,7 @@ public class CameraController : MonoBehaviour
     [SerializeField] private float ZoomSpeed;
     [SerializeField] private bool _invertHorizontal;
     [SerializeField] private bool _invertVertical;
+    [SerializeField] private bool _invertZoom;
     [SerializeField] private float _edgePadding;
     private Vector2 _panInput;
     private float _mouseLeftInput;
@@ -20,6 +21,7 @@ public class CameraController : MonoBehaviour
     private float _mouseMiddleInput;
     private Vector2 _mouseDeltaInput;
     private Vector2 _mousePositionInput;
+    private float _mouseZoomInput;
     private bool _hasFocus;
 
     void Awake()
@@ -37,6 +39,8 @@ public class CameraController : MonoBehaviour
         _input.Camera.MouseDelta.canceled += ctx => _mouseDeltaInput = Vector2.zero;
         _input.Camera.MousePosition.performed += ctx => _mousePositionInput = ctx.ReadValue<Vector2>();
         _input.Camera.MousePosition.canceled += ctx => _mousePositionInput = Vector2.zero;
+        _input.Camera.Zoom.performed += ctx => _mouseZoomInput = ctx.ReadValue<float>();
+        _input.Camera.Zoom.canceled += ctx => _mouseZoomInput = 0f;
         _input.Enable();
         _mainCamera = Camera.main;
     }
@@ -52,10 +56,9 @@ public class CameraController : MonoBehaviour
     }
     void HandleCameraPan()
     {
-        transform.position += PanSpeed * Time.deltaTime * new Vector3(_panInput.x, 0f, _panInput.y);
+        transform.position += Quaternion.Euler(0f, _mainCamera.transform.eulerAngles.y, 0f) * new Vector3(_panInput.x, 0f, _panInput.y) * PanSpeed * Time.deltaTime;
 
         // Edge pan
-        var centerPoint = new Vector2(Screen.width, Screen.height) / 2f;
         if (_mousePositionInput.x <= _edgePadding
             || _mousePositionInput.x >= Screen.width - _edgePadding)
         {
@@ -76,14 +79,13 @@ public class CameraController : MonoBehaviour
         {
             _cameraOrbitFollow.HorizontalAxis.Value += (_invertHorizontal ? -1f : 1f) * _mouseDeltaInput.x * RotateSpeed * Time.deltaTime;
             _cameraOrbitFollow.VerticalAxis.Value += (_invertVertical ? -1f : 1f) * _mouseDeltaInput.y * RotateSpeed * Time.deltaTime;
-
-            _cameraOrbitFollow.HorizontalAxis.Value = Mathf.Clamp(_cameraOrbitFollow.HorizontalAxis.Value, _cameraOrbitFollow.HorizontalAxis.Range.x, _cameraOrbitFollow.HorizontalAxis.Range.y);
             _cameraOrbitFollow.VerticalAxis.Value = Mathf.Clamp(_cameraOrbitFollow.VerticalAxis.Value, _cameraOrbitFollow.VerticalAxis.Range.x, _cameraOrbitFollow.VerticalAxis.Range.y);
         }
     }
     void HandleCameraZoom()
     {
-
+        _cameraOrbitFollow.RadialAxis.Value += (_invertZoom ? -1f : 1f) * _mouseZoomInput * ZoomSpeed * Time.deltaTime;
+        _cameraOrbitFollow.RadialAxis.Value = Mathf.Clamp(_cameraOrbitFollow.RadialAxis.Value, _cameraOrbitFollow.RadialAxis.Range.x, _cameraOrbitFollow.RadialAxis.Range.y);
     }
     void OnApplicationFocus(bool hasFocus)
     {

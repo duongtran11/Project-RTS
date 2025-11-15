@@ -103,7 +103,7 @@ public partial class @GameInput: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": ""Zoom"",
-                    ""type"": ""Value"",
+                    ""type"": ""PassThrough"",
                     ""id"": ""a2c5b48b-9e8e-4978-8b9a-a263658d60cb"",
                     ""expectedControlType"": """",
                     ""processors"": """",
